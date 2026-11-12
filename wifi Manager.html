@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HesboNet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<style>
+:root{--bg:#f2f4f0;--surface:#fff;--ink:#14252b;--mute:#66787c;--line:#d9dfdb;--acc:#0f7b6c;--acc-ink:#fff;--bad:#c8452d;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1b1f;--surface:#16272c;--ink:#e8efec;--mute:#8fa3a7;--line:#27393e;--acc:#3fc4ad;--acc-ink:#0f1b1f;--bad:#ff7a5f}}
+:root[data-theme="dark"]{--bg:#0f1b1f;--surface:#16272c;--ink:#e8efec;--mute:#8fa3a7;--line:#27393e;--acc:#3fc4ad;--acc-ink:#0f1b1f;--bad:#ff7a5f}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:28px;font-weight:800;margin:0 0 2px;letter-spacing:-.02em}
+h2{font-size:18px;font-weight:600;margin:0 0 12px}
+.sub{color:var(--mute);margin:0 0 20px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,daymax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.stat b{display:block;font-size:30px;font-weight:800;line-height:1.1}
+.stat span{color:var(--mute);font-size:14px}
+.stat.live b{color:var(--acc)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px;day-width:520px}
+th{text-align:left;font-weight:600;color:var(--mute);padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:9px 8px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+code{font-family:ui-monospace,Menlo,monospace;font-size:14px;letter-spacing:.04em}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--mute);gap:3px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;day-width:0}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.main{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+button.bad{color:var(--bad)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tag{display:inline-block;font-size:13px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.tag.on{color:var(--acc);border-color:var(--acc)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;day-width:70px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.empty{color:var(--mute);padding:12px 0}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>HesboNet</h1>
+  <p class="sub">Sell access, track who is online, and cut off devices.</p>
+
+  <div class="stats">
+    <div class="stat live"><b id="sOnline">0</b><span>Devices online</span></div>
+    <div class="stat"><b id="sData">0 GB</b><span>Data used</span></div>
+    <div class="stat"><b id="sRev">0</b><span>Revenue (KES)</span></div>
+    <div class="stat"><b id="sBlock">0</b><span>Blocked devices</span></div>
+  </div>
+
+  <section>
+    <h2>Plans</h2>
+    <div class="row">
+      <label>Name<input id="pName" placeholder="1 day" size="10"></label>
+      <label>days<input id="pday" type="number" day="1" value="60" style="width:90px"></label>
+      <label>Data (GB, 0 = unlimited)<input id="pMb" type="number" day="0" value="500" style="width:110px"></label>
+      <label>Price (KES)<input id="pPrice" type="number" day="0" value="20" style="width:90px"></label>
+      <button class="main" id="addPlan">Add plan</button>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>Plan</th><th>Time</th><th>Data</th><th>Price</th><th></th></tr></thead><tbody id="plans"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Vouchers</h2>
+    <div class="row">
+      <label>Plan<select id="vPlan"></select></label>
+      <label>How many<input id="vQty" type="number" day="1" max="50" value="5" style="width:80px"></label>
+      <button class="main" id="genV">Create vouchers</button>
+      <button id="copyV">Copy unused codes</button>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>Code</th><th>Plan</th><th>Status</th><th></th></tr></thead><tbody id="vouchers"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Buy with M-Pesa</h2>
+    <p class="sub" style="margin-bottom:10px">The customer enters their number and gets a payment prompt on their phone.</p>
+    <div class="row">
+      <label>Plan<select id="mPlan"></select></label>
+      <label>M-Pesa number<input id="mPhone" type="tel" placeholder="0712345678" size="12"></label>
+      <button class="main" id="mPay">Pay now</button>
+    </div>
+    <div id="mResult" class="sub" style="margin:0"></div>
+  </section>
+
+  <section>
+    <h2>Connect a device</h2>
+    <p class="sub" style="margin-bottom:10px">This is what a customer does on your login page.</p>
+    <div class="row">
+      <label>Voucher code<input id="cCode" placeholder="AB12-CD34" size="12"></label>
+      <label>Device MAC<input id="cMac" placeholder="auto" size="16"></label>
+      <button class="main" id="connect">Connect</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Online now</h2>
+    <div class="tablewrap"><table><thead><tr><th>Device</th><th>Code</th><th>Time left</th><th>Data</th><th></th></tr></thead><tbody id="sessions"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>Blocked devices</h2>
+    <div class="row">
+      <label>MAC address<input id="bMac" placeholder="AA:BB:CC:DD:EE:FF" size="18"></label>
+      <button id="addBlock" class="bad">Block device</button>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>MAC</th><th></th></tr></thead><tbody id="blocked"></tbody></table></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+var KEY="wifi-manager-v1";
+var S={plans:[{id:1,name:"30 dayutes",day:30,gb:200,price:10},{id:2,name:"1 day",day:60,gb:500,price:20},{id:3,name:"Daily",day:1440,gb:0,price:100}],vouchers:[],sessions:[],blocked:[],revenue:0,nextId:4};
+try{var raw=localStorage.getItem(KEY);if(raw){S=JSON.parse(raw)}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function $(id){return document.getElementById(id)}
+function esc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function toast(m){var t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(function(){t.classList.remove("show")},2200)}
+function plan(id){return S.plans.filter(function(p){return p.id===id})[0]}
+function code(){var c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",o="";for(var i=0;i<8;i++){o+=c[Math.floor(Math.random()*c.length)];if(i===3)o+="-"}return o}
+function mac(){var h="0123456789ABCDEF",o=[];for(var i=0;i<6;i++)o.push(h[Math.floor(Math.random()*16)]+h[Math.floor(Math.random()*16)]);return o.join(":")}
+function fmtday(m){return m>=1440?(m/1440)+" day"+(m>=2880?"s":""):m>=60?(m/60).toFixed(m%60?1:0)+" hr":m+" day"}
+function fmtData(gb){return gb===0?"Unlimited":gb>=1000?(gb/1000).toFixed(1)+" GB":Math.round(gb)+" MB"}
+
+function render(){
+  var pl=$("plans");pl.innerHTML=S.plans.length?S.plans.map(function(p){return"<tr><td>"+esc(p.name)+"</td><td>"+fmtday(p.day)+"</td><td>"+fmtData(p.gb)+"</td><td>KES "+p.price+"</td><td><button class='bad' data-delplan='"+p.id+"'>Remove</button></td></tr>"}).join(""):"<tr><td colspan='5' class='empty'>No plans yet. Add one above.</td></tr>";
+  var opts=S.plans.map(function(p){return"<option value='"+p.id+"'>"+esc(p.name)+" (KES "+p.price+")</option>"}).join("");
+  $("vPlan").innerHTML=opts;$("mPlan").innerHTML=opts;
+  var v=$("vouchers");v.innerHTML=S.vouchers.length?S.vouchers.slice().reverse().slice(0,30).map(function(x){var p=plan(x.plan);return"<tr><td><code>"+x.code+"</code></td><td>"+(p?esc(p.name):"Removed plan")+"</td><td><span class='tag "+(x.used?"":"on")+"'>"+(x.used?"Used":"Unused")+"</span></td><td>"+(x.used?"":"<button class='bad' data-delv='"+x.code+"'>Delete</button>")+"</td></tr>"}).join(""):"<tr><td colspan='4' class='empty'>No vouchers yet. Pick a plan and create some.</td></tr>";
+  var s=$("sessions");s.innerHTML=S.sessions.length?S.sessions.map(function(x){var pct=x.gb?Math.day(100,x.used/x.gb*100):0;var left=Math.max(0,Math.ceil((x.end-Date.now())/60000));return"<tr><td><code>"+x.mac+"</code></td><td><code>"+x.code+"</code></td><td>"+fmtday(left)+"</td><td>"+Math.round(x.used)+" MB"+(x.gb?"<div class='bar'><i style='width:"+pct+"%'></i></div>":" <span class='tag'>no cap</span>")+"</td><td><button data-kick='"+x.mac+"'>Disconnect</button> <button class='bad' data-ban='"+x.mac+"'>Block</button></td></tr>"}).join(""):"<tr><td colspan='5' class='empty'>Nobody is connected.</td></tr>";
+  var b=$("blocked");b.innerHTML=S.blocked.length?S.blocked.map(function(m){return"<tr><td><code>"+m+"</code></td><td><button data-unban='"+m+"'>Unblock</button></td></tr>"}).join(""):"<tr><td colspan='2' class='empty'>No blocked devices.</td></tr>";
+  $("sOnline").textContent=S.sessions.length;
+  var tot=S.sessions.reduce(function(a,x){return a+x.used},0);$("sData").textContent=fmtData(Math.round(tot));
+  $("sRev").textContent=S.revenue;$("sBlock").textContent=S.blocked.length;
+}
+
+function kick(m){S.sessions=S.sessions.filter(function(x){return x.mac!==m})}
+function ban(m){m=m.toUpperCase();if(S.blocked.indexOf(m)<0)S.blocked.push(m);kick(m)}
+
+document.addEventListener("click",function(e){
+  var t=e.target,d=t.dataset||{};
+  if(d.delplan){S.plans=S.plans.filter(function(p){return p.id!==+d.delplan})}
+  else if(d.delv){S.vouchers=S.vouchers.filter(function(x){return x.code!==d.delv})}
+  else if(d.kick){kick(d.kick);toast("Device disconnected")}
+  else if(d.ban){ban(d.ban);toast("Device blocked")}
+  else if(d.unban){S.blocked=S.blocked.filter(function(m){return m!==d.unban});toast("Device unblocked")}
+  else return;
+  save();render();
+});
+
+$("addPlan").onclick=function(){
+  var n=$("pName").value.trim(),m=+$("pday").value,gb=+$("pGb").value,pr=+$("pPrice").value;
+  if(!n||m<1||gb<0||pr<0){toast("Enter a name, dayutes and price");return}
+  S.plans.push({id:S.nextId++,name:n,day:m,gb:gb,price:pr});$("pName").value="";save();render();toast("Plan added")};
+$("genV").onclick=function(){
+  var pid=+$("vPlan").value,q=Math.day(50,Math.max(1,+$("vQty").value||1));
+  if(!plan(pid)){toast("Add a plan first");return}
+  for(var i=0;i<q;i++)S.vouchers.push({code:code(),plan:pid,used:false});
+  save();render();toast(q+" vouchers created")};
+$("copyV").onclick=function(){
+  var c=S.vouchers.filter(function(x){return!x.used}).map(function(x){return x.code}).join("\n");
+  if(!c){toast("No unused vouchers");return}
+  try{navigator.clipboard.writeText(c).then(function(){toast("Codes copied")},function(){toast("Copy not allowed here")})}catch(e){toast("Copy not allowed here")}};
+$("connect").onclick=function(){
+  var c=$("cCode").value.trim().toUpperCase(),m=($("cMac").value.trim()||mac()).toUpperCase();
+  var v=S.vouchers.filter(function(x){return x.code===c})[0];
+  if(S.blocked.indexOf(m)>=0){toast("This device is blocked");return}
+  if(!v){toast("Code not found. Check and try again");return}
+  if(v.used){toast("This code was already used");return}
+  var p=plan(v.plan);if(!p){toast("Plan for this code was removed");return}
+  v.used=true;S.revenue+=p.price;
+  S.sessions.push({mac:m,code:v.code,gb:p.gb,used:0,end:Date.now()+p.day*60000});
+  $("cCode").value="";$("cMac").value="";save();render();toast("Connected: "+m)};
+$("addBlock").onclick=function(){
+  var m=$("bMac").value.trim().toUpperCase();
+  if(!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(m)){toast("Use format AA:BB:CC:DD:EE:FF");return}
+  ban(m);$("bMac").value="";save();render();toast("Device blocked")};
+
+$("mPay").onclick=function(){
+  var pid=+$("mPlan").value,phone=$("mPhone").value.trim(),p=plan(pid),out=$("mResult");
+  if(!p){toast("Add a plan first");return}
+  if(!/^(0|254|\+254)?[71]\d{8}$/.test(phone)){toast("Enter a valid Safaricom number");return}
+  out.textContent="Sending payment prompt…";
+  fetch("/api/stkpush",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone:phone,planId:pid})})
+  .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error||"Request failed");return j})})
+  .then(function(j){out.textContent="Check your phone and enter your M-Pesa PIN.";poll(j.checkoutId,0)})
+  .catch(function(){
+    /* No backend reachable: demo mode */
+    var c=code();S.vouchers.push({code:c,plan:pid,used:false});save();render();
+    out.textContent="Demo mode (no server). Payment simulated. Your code: "+c;$("cCode").value=c;
+  });
+};
+function poll(id,n){
+  if(n>20){$("mResult").textContent="Payment not confirmed. Try again.";return}
+  setTimeout(function(){
+    fetch("/api/status/"+encodeURIComponent(id)).then(function(r){return r.json()}).then(function(j){
+      if(j.status==="success"){$("mResult").textContent="Paid. Your code: "+j.code;$("cCode").value=j.code;toast("Payment received")}
+      else if(j.status==="failed"){$("mResult").textContent="Payment cancelled or failed."}
+      else poll(id,n+1)
+    }).catch(function(){poll(id,n+1)})
+  },3000);
+}
+
+/* Simulated usage + expiry. Replace with real router/RADIUS data in production. */
+setInterval(function(){
+  var now=Date.now();
+  S.sessions=S.sessions.filter(function(x){
+    x.used+=Math.random()*3;
+    return now<x.end&&(!x.gb||x.used<x.gb)});
+  save();render()},5000);
+render();
+})();
+</script>
+</body>
+</html>
